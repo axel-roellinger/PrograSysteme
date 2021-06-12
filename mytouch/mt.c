@@ -8,18 +8,12 @@
 #include <time.h>
 #include <string.h> 
 #include <libgen.h> //pour basename et dirname
-#include <pwd.h>
-#include <stdbool.h>
 
 void check_end_file_perm(char* file_path)
 {
     char* pathcopy = strdup(file_path); //copie depuis le pointeur pour ne pas modifier la valeur pointée
-
-    //printf("Chemin complet : %s\n", file_path);
         
     char* dir = dirname(pathcopy);
-    
-    //printf("Dossier de création : %s\n", dir);   
     
     struct stat dir_buf; //buffer pour analyser dir
     stat(dir, &dir_buf);
@@ -42,27 +36,19 @@ void check_end_file_perm(char* file_path)
         exit(EXIT_FAILURE);
     }
     
-	return; //return void s'il n'y a aucune condition ci-dessus de vérifiée
+    return; //return void s'il n'y a aucune condition ci-dessus de vérifiée
 }
 
 int main(int argc, char* argv[])
-{
-    /*printf("Args : ");
-    
-    for(int i = 0; i < argc; i++)
-    {
-        printf("%s ", argv[i]);
-    }
-    
-    printf("\n");*/
-    
-	int rflag = 0;
-	int cflag = 0;
+{   
+	//flags utilisés pour distinguer les actions à effectuer en fonction des options, passe à 1 si présent en CLI
+    int rflag = 0;
+    int cflag = 0;
 
-	char* end_file = NULL;
-	char* ref = NULL;
+    char* end_file = NULL; //end_file : stocke le chemin du fichier à créer/à modifier
+	char* ref = NULL; //ref : stocke le chemin du fichier de référence
 
-	int option;
+	int option; //Option de getopt
     
     int change; //Permet de vérifier la validité du changement de dates
 
@@ -98,15 +84,13 @@ int main(int argc, char* argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	end_file = argv[optind];
+	end_file = argv[optind]; //optind : index du premier argument non lu par getopt(), ici le chemin du fichier à modifier/créer
 
 	if(ref != NULL && strcmp(end_file, ref) == 0)
 	{
 		perror("Même fichier en entrée et en référence\n");
 		exit(EXIT_FAILURE);
 	}
-
-    //printf("end_file : %s\n", end_file);
 	
 	int fd; //descripteur de fichier pour les tests d'ouverture/de création
 
@@ -117,38 +101,38 @@ int main(int argc, char* argv[])
 
 			//s'il n'y a rien, on continue
             
-			if((access(end_file, F_OK) == -1) && cflag == 0) //Si le fichier n'existe pas et qu'on ne peut le créer
-			{
-                
-				fd = open(end_file, O_CREAT, 0777);
-						
-                if(fd == -1)		
-				{
-                    perror("Le fichier n'a pas pu être créé");
-                    exit(EXIT_FAILURE);
-                }
-                        
-                close(fd);
-                exit(EXIT_SUCCESS);    
-            }
-                        
-            else if((access(end_file, F_OK) == -1) && cflag == 1)
+			if(access(end_file, F_OK) == -1)
             {
-                exit(EXIT_SUCCESS);
+                switch(cflag)
+                {
+                    case 0: //Flag c non présent
+                        fd = open(end_file, O_CREAT, 0777);
+                        
+                        if(fd == -1)
+                        {
+                            perror("Le fichier n'a pas pu être créé");
+                            exit(EXIT_FAILURE);
+                        }
+                        
+                        close(fd);
+                        exit(EXIT_SUCCESS);
+                        
+                    case 1: //Flag c présent
+                        exit(EXIT_SUCCESS);
+                }
             }
             
-            //Si le fichier existe : modification des attributs de date
+            //Si le fichier existe déjà : modification des attributs de date
             
-            struct utimbuf buffer; //Date du fichier à changer
+            struct utimbuf buffer; //Buffer pour stocker les nouvelles informations du fichier à changer
             time_t t; //timestamp
             buffer.actime = time(&t);
             buffer.modtime = time(&t);
             
-            change = utime(end_file, &buffer); //Modification des dates via utime()
+            change = utime(end_file, &buffer); //Modification des dates via utime() à l'aide du buffer
             
-            if(change == 0)
+            if(change == 0) //Changement réussi
             {
-                
                 exit(EXIT_SUCCESS);
             }
             
@@ -187,9 +171,30 @@ int main(int argc, char* argv[])
                         
                 close(fd);
             }
+			
+			if(access(end_file, F_OK) == -1)
+            {
+                switch(cflag)
+                {
+                    case 0:
+                        fd = open(end_file, O_CREAT, 0777);
+                        
+                        if(fd == -1)
+                        {
+                            perror("Le fichier n'a pas pu être créé");
+                            exit(EXIT_FAILURE);
+                        }
+                        
+                        close(fd);
+						break;
+                        
+                    case 1:
+                        exit(EXIT_SUCCESS);
+                }
+            }
             
-            struct utimbuf buf_end; //Permettra de réattribuer les dates
-            struct stat buf_ref; //Permet d'obtenir les dates
+            struct utimbuf buf_end; //Buffer pour modifier les attributs de date du fichier en fin de commande
+            struct stat buf_ref; //Buffer pour utiliser les attributs de dates du fichier de référence
             
             stat(ref, &buf_ref);
             
