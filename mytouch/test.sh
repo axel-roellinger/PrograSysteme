@@ -34,7 +34,7 @@ test_1()
 
     echo -n "Test 1.4 - syntaxe ok............................................."
     touch $TMP/toto
-    #if ! $PROG -r $TMP/toto -c toto     > $TMP/test_14_stdout 2> $TMP/test_14_stderr ; then echo "échec => code de retour invalide" && return 1; fi
+    if ! $PROG -r $TMP/toto -c toto     > $TMP/test_14_stdout 2> $TMP/test_14_stderr ; then echo "échec => code de retour invalide" && return 1; fi
     if ! check_empty $TMP/test_14_stderr                                             ; then echo "échec => stderr non vide"         && return 1; fi
     if ! check_empty $TMP/test_14_stdout                                             ; then echo "échec => stdout non vide"         && return 1; fi
     echo "OK"
